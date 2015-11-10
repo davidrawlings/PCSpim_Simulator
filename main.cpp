@@ -28,7 +28,6 @@ enum Command
     SUB
 };
 
-
 // Reader class ===============================================================
 class Reader
 {
@@ -237,12 +236,42 @@ public:
         }
     }
 
-    // methods that get private members ---------------------------------------
+    // methods that get/set private members -----------------------------------
     int get_intInCalc()
     {
         return intInCalc;
     }
-    
+
+    void reset_nextRegisterInCalc()
+    {
+        nextRegisterInCalc = 0;
+    }
+
+    int get_registerInCalc(int i)
+    {
+        return registerInCalc[i];
+    }
+
+    Command get_command()
+    {
+        return command;
+    }
+
+    void reset_i()
+    {
+        i = 0;
+    }
+
+    // other methods ----------------------------------------------------------
+    bool s_isEmpty()
+    {
+        if (int(s[0]) == 0)        
+            return true;
+        else
+            return false;
+    }
+        
+private:
     // the input is stored inside this class
     char s[MAX_BUF];
     // index variable that will keep track of what we have parsed through
@@ -260,11 +289,131 @@ public:
     int registerInCalc[3];
     // this keeps track of what registerInCalc will be written to next
     int nextRegisterInCalc;
-private:
     // this is where the int is stored only for the li command
     int intInCalc;
 };
 
+// LI function
+void li(Reader reader, int reg[])
+{
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register after command"
+                  << std::endl;
+        return;
+    }
+    
+    // read next item expecting a comma
+    if (!reader.readComma())
+    {
+        std::cout << "ERROR: expected a ','" << std::endl;
+        return;
+    }
+    
+    // read next item expecting an int
+    if (!reader.readInt())
+    {
+        std::cout << "ERROR: expected an int following li command"
+                  << std::endl;
+        return;
+    }
+    
+    // perform li operation
+    reg[reader.get_registerInCalc(0)] = reader.get_intInCalc();
+}
+
+// ADD function
+void add(Reader reader, int reg[])
+{
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register after command"
+                  << std::endl;
+        return;
+    }
+    
+    // read next item expecting a comma
+    if (!reader.readComma())
+    {
+        std::cout << "ERROR: expected a ','" << std::endl;
+        return;
+    }
+    
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register" << std::endl;
+        return;
+    }
+    
+    // read next item expecting a comma
+    if (!reader.readComma())
+    {
+        std::cout << "ERROR: expected a ','" << std::endl;
+        return;
+    }
+    
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register" << std::endl;
+        return;
+    }
+    
+    // perform add operation
+    reg[reader.get_registerInCalc(0)]
+        = reg[reader.get_registerInCalc(1)]
+        + reg[reader.get_registerInCalc(2)];
+}
+
+// SUB function
+void sub(Reader reader, int reg[])
+{
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register after command"
+                  << std::endl;
+        return;
+    }
+    
+    // read next item expecting a comma
+    if (!reader.readComma())
+    {
+       std::cout << "ERROR: expected a ','" << std::endl;
+       return;
+    }
+    
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register" << std::endl;
+        return;
+    }
+    
+    // read next item expecting a comma
+    if (!reader.readComma())
+    {
+        std::cout << "ERROR: expected a ','" << std::endl;
+        return;
+    }
+    
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register" << std::endl;
+        return;
+    }
+    
+    // perform add operation
+    reg[reader.get_registerInCalc(0)]
+        = reg[reader.get_registerInCalc(1)]
+        - reg[reader.get_registerInCalc(2)];
+}
+
+// print registers function
 void printRegisters(int reg[], const int NUM_RESISTERS)
 {
     std::cout << std::left
@@ -329,14 +478,49 @@ int main()
             break;
 
         // exit if empty string is entered
-        if (int(reader.s[0]) == 0)
+        if (reader.s_isEmpty())
             break;
-
-        // The first part of the all input will be the same
         
-        // read next item expecting li, add, or sub
+        // read next item expecting a command
         if (!reader.readCommand())
-            std::cout << "ERROR: expected li, add, or sub" << std::endl;
+            std::cout << "ERROR: expected command" << std::endl;
+
+        // based on command branch off to parse through the rest of the line
+        // and perform calcuation
+        switch(reader.get_command())
+        {
+            case LI:
+            {
+                li(reader, reg);
+                break;
+            }
+            case ADD:
+            {
+                add(reader, reg);
+                break;
+            }   
+            case SUB:
+            {
+                sub(reader, reg);
+                break;
+            }
+        }
+        
+        printRegisters(reg, NUM_REGISTERS);
+
+        // reset for next iteration
+        reader.reset_i();
+        reader.reset_nextRegisterInCalc();
+    }
+
+    std::cout << "END" << std::endl;
+
+    return 0;
+}
+
+
+
+        /*
         // read next item expecting a register
         if (!reader.readRegister())
             std::cout << "ERROR: expected a register after command"
@@ -348,17 +532,17 @@ int main()
         // Now comes the part of the input that will vary depending on what
         // command is used
         
-        if (reader.command == LI)
+        if (reader.get_command() == LI)
         {
             // read next item expecting an int
             if (!reader.readInt())
                 std::cout << "ERROR: expected an int following li command"
                           << std::endl;
             
-            reg[reader.registerInCalc[0]] = reader.get_intInCalc();
+            reg[reader.get_registerInCalc(0)] = reader.get_intInCalc();
         }
 
-        if (reader.command == ADD)
+        if (reader.get_command() == ADD)
         {
             // read next item expecting a register
             if (!reader.readRegister())
@@ -371,11 +555,12 @@ int main()
                 std::cout << "ERROR: expected a register" << std::endl;
 
             // perform add calculation
-            reg[reader.registerInCalc[0]] = reg[reader.registerInCalc[1]]
-                + reg[reader.registerInCalc[2]];
+            reg[reader.get_registerInCalc(0)]
+                = reg[reader.get_registerInCalc(1)]
+                + reg[reader.get_registerInCalc(2)];
         }
 
-        if (reader.command == SUB)
+        if (reader.get_command() == SUB)
         {
             // read next item expecting a register
             if (!reader.readRegister())
@@ -388,26 +573,8 @@ int main()
                 std::cout << "ERROR: expected a register" << std::endl;
 
             // perform add calculation
-            reg[reader.registerInCalc[0]] = reg[reader.registerInCalc[1]]
-                - reg[reader.registerInCalc[2]];
-        }
-
-        // print out contents of registers
-        /*
-        for (int i = 0; i < 32; ++i)
-        {
-            std::cout << "$s" << i << ": " << reg[i] << std::endl;
+            reg[reader.get_registerInCalc(0)]
+                = reg[reader.get_registerInCalc(1)]
+                - reg[reader.get_registerInCalc(2)];
         }
         */
-
-        printRegisters(reg, NUM_REGISTERS);
-
-        // reset for next iteration
-        reader.i = 0;
-        reader.nextRegisterInCalc = 0;
-    }
-
-    std::cout << "END" << std::endl;
-
-    return 0;
-}
