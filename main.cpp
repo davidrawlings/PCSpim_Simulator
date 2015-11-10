@@ -1,7 +1,8 @@
 // ============================================================================
 // David Rawlings
+// Doug
 // ============================================================================
-// ciss360 a03q06
+// ciss360 final project 2
 // ============================================================================
 // Description:
 // This program simulates MIPS with the registers $s0, $s1, $s2 and understands
@@ -16,6 +17,7 @@
 #include <iostream>
 #include <limits>
 #include <cmath>
+#include <iomanip>
 
 const int MAX_BUF = 1024;
 
@@ -26,14 +28,18 @@ enum Command
     SUB
 };
 
+
+// Reader class ===============================================================
 class Reader
 {
 public:
 
+    // constructor
     Reader()
         : i(0), nextRegisterInCalc(0)
     {}
 
+    // methods that read ------------------------------------------------------
     bool readLine()
     {
         std::cin.getline(s, MAX_BUF);
@@ -78,25 +84,67 @@ public:
     {
         moveIndexToNextChar();
         
-        if (s[i] == '$' && s[i + 1] == 's')
+        if (s[i] == '$' && s[i + 1] == 'v')
+        {            
+            if (s[i + 2] >= '0' && s[i + 2] <= '1')
+            {
+                registerInCalc[nextRegisterInCalc] = s[i + 2] - '0' + 2;
+                ++nextRegisterInCalc;
+                i += 3;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        if (s[i] == '$' && s[i + 1] == 'a')
+        {            
+            if (s[i + 2] >= '0' && s[i + 2] <= '3')
+            {
+                registerInCalc[nextRegisterInCalc] = s[i + 2] - '0' + 4;
+                ++nextRegisterInCalc;
+                i += 3;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        if (s[i] == '$' && s[i + 1] == 't')
         {
-            if (s[i + 2] == '0')
+            if (s[i + 2] >= '0' && s[i + 2] <= '7')
             {
-                registerInCalc[nextRegisterInCalc] = 0;
+                registerInCalc[nextRegisterInCalc] = s[i + 2] - '0' + 8;
                 ++nextRegisterInCalc;
                 i += 3;
                 return true;
             }
-            else if (s[i + 2] == '1')
+            if (s[i + 2] >= '8' && s[i + 2] <= '9')
             {
-                registerInCalc[nextRegisterInCalc] = 1;
+                registerInCalc[nextRegisterInCalc] = s[i + 2] - '0' + 16;
                 ++nextRegisterInCalc;
                 i += 3;
                 return true;
             }
-            else if (s[i + 2] == '2')
+            else
             {
-                registerInCalc[nextRegisterInCalc] = 2;
+                return false;
+            }
+        }
+        else if (s[i] == '$' && s[i + 1] == 's')
+        {
+            if (s[i + 2] >= '0' && s[i + 2] <= '7')
+            {
+                registerInCalc[nextRegisterInCalc] = s[i + 2] - '0' + 16;
+                ++nextRegisterInCalc;
+                i += 3;
+                return true;
+            }
+            if (s[i + 2] == '8')
+            {
+                registerInCalc[nextRegisterInCalc] = 30;
                 ++nextRegisterInCalc;
                 i += 3;
                 return true;
@@ -189,6 +237,12 @@ public:
         }
     }
 
+    // methods that get private members ---------------------------------------
+    int get_intInCalc()
+    {
+        return intInCalc;
+    }
+    
     // the input is stored inside this class
     char s[MAX_BUF];
     // index variable that will keep track of what we have parsed through
@@ -206,13 +260,60 @@ public:
     int registerInCalc[3];
     // this keeps track of what registerInCalc will be written to next
     int nextRegisterInCalc;
+private:
     // this is where the int is stored only for the li command
     int intInCalc;
 };
 
+void printRegisters(int reg[], const int NUM_RESISTERS)
+{
+    std::cout << std::left
+              << "                             General Registers" << std::endl
+              << "R0  (r0) = " << std::setw(10) << reg[0]
+              << "R8  (t0) = " << std::setw(10) << reg[8]
+              << "R16  (s0) = " << std::setw(9) << reg[16]
+              << "R24  (t8) = " << reg[24] << std::endl
+              << "R1  (at) = " << std::setw(10) << reg[1]
+              << "R9  (t1) = " << std::setw(10) << reg[9]
+              << "R17  (s1) = " << std::setw(9) << reg[17]
+              << "R25  (t9) = " << reg[25] << std::endl
+              << "R2  (v0) = " << std::setw(10) << reg[2]
+              << "R10  (t2) = " << std::setw(9) << reg[10]
+              << "R18  (s2) = " << std::setw(9) << reg[18]
+              << "R26  (k0) = " << reg[26] << std::endl
+              << "R3  (v1) = " << std::setw(10) << reg[3]
+              << "R11  (t3) = " << std::setw(9) << reg[11]
+              << "R19  (s3) = " << std::setw(9) << reg[19]
+              << "R27  (k1) = " << reg[27] << std::endl
+              << "R4  (a0) = " << std::setw(10) << reg[4]
+              << "R12  (t4) = " << std::setw(9) << reg[12]
+              << "R20  (s4) = " << std::setw(9) << reg[20]
+              << "R28  (gp) = " << reg[28] << std::endl
+              << "R5  (a1) = " << std::setw(10) << reg[5]
+              << "R13  (t5) = " << std::setw(9) << reg[13]
+              << "R21  (s5) = " << std::setw(9) << reg[21]
+              << "R29  (sp) = " << reg[29] << std::endl
+              << "R6  (a2) = " << std::setw(10) << reg[6]
+              << "R14  (t6) = " << std::setw(9) << reg[14]
+              << "R22  (s6) = " << std::setw(9) << reg[22]
+              << "R30  (s8) = " << reg[30] << std::endl
+              << "R7  (a3) = " << std::setw(10) << reg[7]
+              << "R15  (t7) = " << std::setw(9) << reg[15]
+              << "R23  (s7) = " << std::setw(9) << reg[23]
+              << "R31  (ra) = " << reg[31] << std::endl;
+}
+
 int main()
 {
-    int s[3] = {0, 0, 0};
+    // create an array for 32 registers
+    const int NUM_REGISTERS = 32;
+    int reg[NUM_REGISTERS] = {0};
+
+    // put values into the gp and the sp
+    reg[28] = 268468224;
+    reg[29] = 2147479548;
+
+    // create the reader object
     Reader reader;
 
     // if this variable turns to true the program will terminate
@@ -254,7 +355,7 @@ int main()
                 std::cout << "ERROR: expected an int following li command"
                           << std::endl;
             
-            s[reader.registerInCalc[0]] = reader.intInCalc;
+            reg[reader.registerInCalc[0]] = reader.get_intInCalc();
         }
 
         if (reader.command == ADD)
@@ -270,8 +371,8 @@ int main()
                 std::cout << "ERROR: expected a register" << std::endl;
 
             // perform add calculation
-            s[reader.registerInCalc[0]] = s[reader.registerInCalc[1]]
-                + s[reader.registerInCalc[2]];
+            reg[reader.registerInCalc[0]] = reg[reader.registerInCalc[1]]
+                + reg[reader.registerInCalc[2]];
         }
 
         if (reader.command == SUB)
@@ -287,15 +388,19 @@ int main()
                 std::cout << "ERROR: expected a register" << std::endl;
 
             // perform add calculation
-            s[reader.registerInCalc[0]] = s[reader.registerInCalc[1]]
-                - s[reader.registerInCalc[2]];
+            reg[reader.registerInCalc[0]] = reg[reader.registerInCalc[1]]
+                - reg[reader.registerInCalc[2]];
         }
 
         // print out contents of registers
-        for (int i = 0; i < 3; ++i)
+        /*
+        for (int i = 0; i < 32; ++i)
         {
-            std::cout << "$s" << i << ": " << s[i] << std::endl;
+            std::cout << "$s" << i << ": " << reg[i] << std::endl;
         }
+        */
+
+        printRegisters(reg, NUM_REGISTERS);
 
         // reset for next iteration
         reader.i = 0;
