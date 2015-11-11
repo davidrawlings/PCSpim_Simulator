@@ -86,6 +86,20 @@ public:
             return true;
         }
         else if (s[i] == 'a' && s[i + 1] == 'd' && s[i + 2] == 'd'
+                 && s[i + 3] == 'i' && s[i + 4] == 'u')
+        {
+            command = ADDIU;
+            i += 5;
+            return true;
+        }
+        else if (s[i] == 'a' && s[i + 1] == 'd' && s[i + 2] == 'd'
+                 && s[i + 3] == 'i')
+        {
+            command = ADDI;
+            i += 4;
+            return true;
+        }
+        else if (s[i] == 'a' && s[i + 1] == 'd' && s[i + 2] == 'd'
                  && s[i + 3] == 'u')
         {
             command = ADDU;
@@ -111,18 +125,10 @@ public:
             i += 3;
             return true;
         }
-        else if (s[i] == 'a' && s[i + 1] == 'd' && s[i + 2] == 'd'
-                 && s[i + 3] == 'i')
-        {
-            command = ADDI;
-            i += 4;
-            return true;
-        }
         else
         {
             return false;
         }
-        
     }
 
     bool readRegister()
@@ -369,6 +375,36 @@ void li(Reader reader, int reg[])
     reg[reader.get_registerInCalc(0)] = reader.get_intInCalc();
 }
 
+// MOVE function
+void move(Reader reader, int reg[])
+{
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register after command"
+                  << std::endl;
+        return;
+    }
+    
+    // read next item expecting a comma
+    if (!reader.readComma())
+    {
+       std::cout << "ERROR: expected a ','" << std::endl;
+       return;
+    }
+    
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register" << std::endl;
+        return;
+    }
+    
+    // perform add operation
+    reg[reader.get_registerInCalc(0)]
+        = reg[reader.get_registerInCalc(1)];
+}
+
 // ADD function
 void add(Reader reader, int reg[], bool usingUnsigned)
 {
@@ -480,8 +516,8 @@ void sub(Reader reader, int reg[], bool usingUnsigned)
     }
 }
 
-// MOVE function
-void move(Reader reader, int reg[])
+// ADDI function
+void addi(Reader reader, int reg[], bool usingUnsigned)
 {
     // read next item expecting a register
     if (!reader.readRegister())
@@ -494,8 +530,8 @@ void move(Reader reader, int reg[])
     // read next item expecting a comma
     if (!reader.readComma())
     {
-       std::cout << "ERROR: expected a ','" << std::endl;
-       return;
+        std::cout << "ERROR: expected a ','" << std::endl;
+        return;
     }
     
     // read next item expecting a register
@@ -505,9 +541,35 @@ void move(Reader reader, int reg[])
         return;
     }
     
-    // perform add operation
-    reg[reader.get_registerInCalc(0)]
-        = reg[reader.get_registerInCalc(1)];
+    // read next item expecting a comma
+    if (!reader.readComma())
+    {
+        std::cout << "ERROR: expected a ','" << std::endl;
+        return;
+    }
+    
+    // read next item expecting an int
+    if (!reader.readInt())
+    {
+        std::cout << "ERROR: expected an int"
+                  << std::endl;
+        return;
+    }
+
+    if (usingUnsigned)
+    {
+        // perform add operation
+        reg[reader.get_registerInCalc(0)]
+            = (unsigned)reg[reader.get_registerInCalc(1)]
+            + (unsigned)reader.get_intInCalc();
+    }
+    else
+    {
+        // perform add operation
+        reg[reader.get_registerInCalc(0)]
+            = reg[reader.get_registerInCalc(1)]
+            + reader.get_intInCalc();
+    }
 }
 
 // print registers function
@@ -614,6 +676,16 @@ int main()
             case SUBU:
             {
                 sub(reader, reg, true);
+                break;
+            }
+            case ADDI:
+            {
+                addi(reader, reg, false);
+                break;
+            }
+            case ADDIU:
+            {
+                addi(reader, reg, true);
                 break;
             }
         }
