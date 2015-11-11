@@ -13,14 +13,10 @@ addiu $s0, $s0, 1
 addu $s0, $s0, $s1
 subu $s0, $s0, $s1
 multu $s0, $s1
+div $s0, $s1
 divu $s0, $s1
 
-la $s0, 0x10010000
-lw $s1, 0($s0)
-sw $s1, 0($s0)
-la $s4, L
-
-seq     $s0, $s7, $s8
+seq $s0, $s7, $s8
 sne 	$s1, $s7, $s8
 slt 	$s2, $s7, $s8	
 sgt 	$s3, $s7, $s8
@@ -41,3 +37,8 @@ bgez	$s7, L 			# >= 0
 bgtz	$s7, L 			# > 0
 blez	$s7, L 			# <= 0
 bltz	$s7, L 			# < 0
+
+la $s0, 0x10010000
+lw $s1, 0($s0)
+sw $s1, 0($s0)
+la $s4, L
