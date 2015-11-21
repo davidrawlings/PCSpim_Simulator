@@ -23,6 +23,9 @@ const int MAX_BUF = 1024;
 
 enum Command
 {
+    // error
+    ERROR,
+    // assembly commands
     LI,
     MOVE,
     ADD,
@@ -44,7 +47,20 @@ enum Command
     SGT,
     SLE,
     SGE,
-    SLTI
+    SLTI,
+    // change mode command
+    MODE,
+    // printing commands
+    REG,
+    // exit command
+    EXIT
+};
+
+enum Mode
+{
+    INTERACTIVE,
+    TEXT,
+    DATA
 };
 
 // Reader class ===============================================================
@@ -72,6 +88,7 @@ public:
     
     bool readCommand()
     {
+        // assembly commands
         moveIndexToNextChar();
         if (s[i] == 'l' && s[i + 1] == 'i')
         {
@@ -210,8 +227,63 @@ public:
             i += 3;
             return true;
         }
+        // change mode command
+        else if (s[i] == 'm' && s[i + 1] == 'o' && s[i + 2] == 'd'
+                 && s[i + 3] == 'e')
+        {
+            command = MODE;
+            i += 4;
+            return true;
+        }
+        // printing commands
+        else if (s[i] == 'r' && s[i + 1] == 'e' && s[i + 2] == 'g')
+        {
+            command = REG;
+            i += 3;
+            return true;
+        }
+        // exit command
+        else if (s[i] == 'e' && s[i + 1] == 'x' && s[i + 2] == 'i'
+                 && s[i + 3] == 't')
+        {
+            command = EXIT;
+            i += 4;
+            return true;
+        }
+        // if input doesn't match any command set command to error
         else
         {
+            command = ERROR;
+            return false;
+        }
+    }
+
+    bool readMode()
+    {
+        moveIndexToNextChar();
+        if (s[i] == 'i' && s[i + 1] == 'n' && s[i + 2] == 't'
+            && s[i + 3] == 'e' && s[i + 4] == 'r'
+            && s[i + 5] == 'a' && s[i + 6] == 'c' && s[i + 7] == 't'
+            && s[i + 8] == 'i' && s[i + 9] == 'v' && s[i + 10] == 'e')
+        {
+            mode = INTERACTIVE;
+            return true;
+        }
+        else if (s[i] == 't' && s[i + 1] == 'e' && s[i + 2] == 'x'
+            && s[i + 3] == 't')
+        {
+            mode = TEXT;
+            return true;
+        }
+        else if (s[i] == 'd' && s[i + 1] == 'a' && s[i + 2] == 't'
+            && s[i + 3] == 'a')
+        {
+            mode = DATA;
+            return true;            
+        }
+        else
+        {
+            command = ERROR;
             return false;
         }
     }
@@ -399,6 +471,11 @@ public:
         i = 0;
     }
 
+    Mode get_mode()
+    {
+        return mode;
+    }    
+
     // other methods ----------------------------------------------------------
     bool s_isEmpty()
     {
@@ -428,6 +505,9 @@ private:
     int nextRegisterInCalc;
     // this is where the int is stored only for the li command
     int intInCalc;
+    // this holds the mode that is read in readMode so it can be returned
+    // in get_mode
+    Mode mode;
 };
 
 // LI function
@@ -777,7 +857,7 @@ void div(Reader reader, int reg[], int & hi, int & lo, bool usingUnsigned)
     }
 }
 
-// SET
+// SET function
 void set(Reader reader, int reg[], Command command, int i = 0)
 {
     // read next item expecting a register
@@ -933,6 +1013,9 @@ int main()
     int hi = 0;
     int lo = 0;
 
+    // mode
+    Mode mode = INTERACTIVE;
+
     // create the reader object
     Reader reader;
 
@@ -940,26 +1023,41 @@ int main()
     bool exit = false;
 
     // main loop
-    while (1)
+    while (!exit)
     {
+        // print out the current mode and then ">>>"
+        switch (mode)
+        {
+            case (INTERACTIVE):
+                std::cout << "Interactive ";
+                break;
+            case (TEXT):
+                std::cout << "Text ";
+                break;
+            case (DATA):
+                std::cout << "Data ";
+                break;
+        }
         std::cout << ">>> ";
 
         // get input from user
+        //reader.readLine();
         if (!(reader.readLine()))
-            break;
+            std::cout << "ERROR: readline error" << std::endl; 
 
         // exit if empty string is entered
-        if (reader.s_isEmpty())
-            break;
+        //if (reader.s_isEmpty())
+        //    break;
         
         // read next item expecting a command
-        if (!reader.readCommand())
-            std::cout << "ERROR: expected command" << std::endl;
+        if (!reader.readCommand())        
+            std::cout << "ERROR: expected command" << std::endl;        
 
         // based on command branch off to parse through the rest of the line
         // and perform calcuation
         switch(reader.get_command())
         {
+            // assembly commands
             case LI:
             {
                 li(reader, reg);
@@ -1049,16 +1147,30 @@ int main()
                 set(reader, reg, reader.get_command());
                 break;
             }
+            // mode change command
+            case MODE:
+            {
+                if (!reader.readMode())
+                    std::cout << "ERROR: mode not recognized" << std::endl;
+                mode = reader.get_mode();
+                break;
+            }
+            // printing commands
+            case REG:
+            {                
+                printRegisters(reg, NUM_REGISTERS);
+                break;
+            }
+            case EXIT:
+            {
+                exit = true;
+            }
         }
-        
-        printRegisters(reg, NUM_REGISTERS);
 
         // reset for next iteration
         reader.reset_i();
         reader.reset_nextRegisterInCalc();
     }
-
-    std::cout << "END" << std::endl;
 
     return 0;
 }
