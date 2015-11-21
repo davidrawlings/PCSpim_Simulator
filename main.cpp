@@ -41,6 +41,7 @@ enum Command
     SEQ,
     SNE,
     SLT,
+    SGT,
     SLE,
     SGE,
     SLTI
@@ -122,6 +123,90 @@ public:
         else if (s[i] == 's' && s[i + 1] == 'u' && s[i + 2] == 'b')
         {
             command = SUB;
+            i += 3;
+            return true;
+        }
+        else if (s[i] == 'm' && s[i + 1] == 'u' && s[i + 2] == 'l'
+                 && s[i + 3] == 't' && s[i + 4] == 'u')
+        {
+            command = MULTU;
+            i += 5;
+            return true;
+        }
+        else if (s[i] == 'm' && s[i + 1] == 'u' && s[i + 2] == 'l'
+                 && s[i + 3] == 't')
+        {
+            command = MULT;
+            i += 4;
+            return true;
+        }
+        else if (s[i] == 'm' && s[i + 1] == 'f' && s[i + 2] == 'l'
+                 && s[i + 3] == 'o')
+        {
+            command = MFLO;
+            i += 4;
+            return true;
+        }
+        else if (s[i] == 'm' && s[i + 1] == 'f' && s[i + 2] == 'h'
+                 && s[i + 3] == 'i')
+        {
+            command = MFHI;
+            i += 4;
+            return true;
+        }
+        else if (s[i] == 'd' && s[i + 1] == 'i' && s[i + 2] == 'v'
+                 && s[i + 3] == 'u')
+        {
+            command = DIVU;
+            i += 4;
+            return true;
+        }
+        else if (s[i] == 'd' && s[i + 1] == 'i' && s[i + 2] == 'v')
+        {
+            command = DIV;
+            i += 3;
+            return true;
+        }
+        else if (s[i] == 's' && s[i + 1] == 'l' && s[i + 2] == 't'
+                 && s[i + 3] == 'i')
+        {
+            command = SLTI;
+            i += 4;
+            return true;
+        }
+        else if (s[i] == 's' && s[i + 1] == 'e' && s[i + 2] == 'q')
+        {
+            command = SEQ;
+            i += 3;
+            return true;
+        }
+        else if (s[i] == 's' && s[i + 1] == 'n' && s[i + 2] == 'e')
+        {
+            command = SNE;
+            i += 3;
+            return true;
+        }
+        else if (s[i] == 's' && s[i + 1] == 'l' && s[i + 2] == 't')
+        {
+            command = SLT;
+            i += 3;
+            return true;
+        }
+        else if (s[i] == 's' && s[i + 1] == 'g' && s[i + 2] == 't')
+        {
+            command = SGT;
+            i += 3;
+            return true;
+        }
+        else if (s[i] == 's' && s[i + 1] == 'l' && s[i + 2] == 'e')
+        {
+            command = SLE;
+            i += 3;
+            return true;
+        }
+        else if (s[i] == 's' && s[i + 1] == 'g' && s[i + 2] == 'e')
+        {
+            command = SGE;
             i += 3;
             return true;
         }
@@ -572,6 +657,229 @@ void addi(Reader reader, int reg[], bool usingUnsigned)
     }
 }
 
+// MULT function
+void mult(Reader reader, int reg[], int & hi, int & lo, bool usingUnsigned)
+{
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register after command"
+                  << std::endl;
+        return;
+    }
+    
+    // read next item expecting a comma
+    if (!reader.readComma())
+    {
+        std::cout << "ERROR: expected a ','" << std::endl;
+        return;
+    }
+    
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register" << std::endl;
+        return;
+    }
+
+    if (usingUnsigned)
+    {
+        // perform mult operation
+        lo = (unsigned)reg[reader.get_registerInCalc(0)]
+            * (unsigned)reg[reader.get_registerInCalc(1)]
+            % (unsigned)2147483647;
+        hi = (unsigned)reg[reader.get_registerInCalc(0)]
+            * (unsigned)reg[reader.get_registerInCalc(1)]
+            / (unsigned)2147483647;
+    }
+    else
+    {
+        // perform mult operation
+        lo = reg[reader.get_registerInCalc(0)]
+            * reg[reader.get_registerInCalc(1)]
+            % 2147483647;
+        hi = reg[reader.get_registerInCalc(0)]
+            * reg[reader.get_registerInCalc(1)]
+            / 2147483647;
+    }
+}
+
+// MFLO function
+void mflo(Reader reader, int reg[], int lo)
+{
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register after command"
+                  << std::endl;
+        return;
+    }
+
+    // perform mflo operation
+    reg[reader.get_registerInCalc(0)] = lo;
+}
+
+// MFLO function
+void mfhi(Reader reader, int reg[], int hi)
+{
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register after command"
+                  << std::endl;
+        return;
+    }
+
+    // perform mflo operation
+    reg[reader.get_registerInCalc(0)] = hi;
+}
+
+// DIV function
+void div(Reader reader, int reg[], int & hi, int & lo, bool usingUnsigned)
+{
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register after command"
+                  << std::endl;
+        return;
+    }
+    
+    // read next item expecting a comma
+    if (!reader.readComma())
+    {
+        std::cout << "ERROR: expected a ','" << std::endl;
+        return;
+    }
+    
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register" << std::endl;
+        return;
+    }
+
+    if (usingUnsigned)
+    {
+        // perform mult operation
+        lo = (unsigned)reg[reader.get_registerInCalc(0)]
+            / (unsigned)reg[reader.get_registerInCalc(1)];
+        hi = (unsigned)reg[reader.get_registerInCalc(0)]
+            % (unsigned)reg[reader.get_registerInCalc(1)];
+    }
+    else
+    {
+        // perform mult operation
+        lo = reg[reader.get_registerInCalc(0)]
+            / reg[reader.get_registerInCalc(1)];
+        hi = reg[reader.get_registerInCalc(0)]
+            % reg[reader.get_registerInCalc(1)];
+    }
+}
+
+// SET
+void set(Reader reader, int reg[], Command command, int i = 0)
+{
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register after command"
+                  << std::endl;
+        return;
+    }
+    
+    // read next item expecting a comma
+    if (!reader.readComma())
+    {
+        std::cout << "ERROR: expected a ','" << std::endl;
+        return;
+    }
+    
+    // read next item expecting a register
+    if (!reader.readRegister())
+    {
+        std::cout << "ERROR: expected a register" << std::endl;
+        return;
+    }
+    
+    // read next item expecting a comma
+    if (!reader.readComma())
+    {
+        std::cout << "ERROR: expected a ','" << std::endl;
+        return;
+    }
+
+    if (command != SLTI)
+    {
+        // read next item expecting a register
+        if (!reader.readRegister())
+        {
+            std::cout << "ERROR: expected a register" << std::endl;
+            return;
+        }
+    }
+    else
+    {         
+        // read next item expecting an int
+        if (!reader.readInt())
+        {
+            std::cout << "ERROR: expected an int"
+                      << std::endl;
+            return;
+        }
+    }
+    
+    if (command == SEQ)
+    {
+        // perform add operation
+        reg[reader.get_registerInCalc(0)]
+            = reg[reader.get_registerInCalc(1)]
+            == reg[reader.get_registerInCalc(2)];
+    }
+    else if (command == SNE)
+    {
+        // perform add operation
+        reg[reader.get_registerInCalc(0)]
+            = reg[reader.get_registerInCalc(1)]
+            != reg[reader.get_registerInCalc(2)];
+    }
+    else if (command == SLT)
+    {
+        // perform add operation
+        reg[reader.get_registerInCalc(0)]
+            = reg[reader.get_registerInCalc(1)]
+            < reg[reader.get_registerInCalc(2)];
+    }
+    else if (command == SGT)
+    {
+        // perform add operation
+        reg[reader.get_registerInCalc(0)]
+            = reg[reader.get_registerInCalc(1)]
+            > reg[reader.get_registerInCalc(2)];
+    }
+    else if (command == SLE)
+    {
+        // perform add operation
+        reg[reader.get_registerInCalc(0)]
+            = reg[reader.get_registerInCalc(1)]
+            <= reg[reader.get_registerInCalc(2)];
+    }
+    else if (command == SGE)
+    {
+        // perform add operation
+        reg[reader.get_registerInCalc(0)]
+            = reg[reader.get_registerInCalc(1)]
+            >= reg[reader.get_registerInCalc(2)];
+    }
+    else if (command == SLTI)
+    {
+        // perform add operation
+        reg[reader.get_registerInCalc(0)]
+            = reg[reader.get_registerInCalc(1)]
+            < reader.get_intInCalc();
+    }
+}
+
 // print registers function
 void printRegisters(int reg[], const int NUM_RESISTERS)
 {
@@ -620,6 +928,10 @@ int main()
     // put values into the gp and the sp
     reg[28] = 268468224;
     reg[29] = 2147479548;
+
+    // create hi and lo registers
+    int hi = 0;
+    int lo = 0;
 
     // create the reader object
     Reader reader;
@@ -688,6 +1000,55 @@ int main()
                 addi(reader, reg, true);
                 break;
             }
+            case MULT:
+            {
+                mult(reader, reg, hi, lo, false);
+                std::cout << "lo: " << lo << std::endl;
+                std::cout << "hi: " << hi << std::endl;
+                break;
+            }
+            case MULTU:
+            {
+                mult(reader, reg, hi, lo, true);
+                std::cout << "lo: " << lo << std::endl;
+                std::cout << "hi: " << hi << std::endl;
+                break;
+            }
+            case DIV:
+            {
+                div(reader, reg, hi, lo, false);
+                std::cout << "lo: " << lo << std::endl;
+                std::cout << "hi: " << hi << std::endl;
+                break;
+            }
+            case DIVU:
+            {
+                div(reader, reg, hi, lo, true);
+                std::cout << "lo: " << lo << std::endl;
+                std::cout << "hi: " << hi << std::endl;
+                break;
+            }
+            case MFLO:
+            {
+                mflo(reader, reg, lo);
+                break;
+            }
+            case MFHI:
+            {
+                mfhi(reader, reg, hi);
+                break;
+            }
+            case SEQ:
+            case SNE:
+            case SGT:
+            case SLT:
+            case SGE:
+            case SLE:
+            case SLTI:
+            {
+                set(reader, reg, reader.get_command());
+                break;
+            }
         }
         
         printRegisters(reg, NUM_REGISTERS);
@@ -701,61 +1062,3 @@ int main()
 
     return 0;
 }
-        /*
-        // read next item expecting a register
-        if (!reader.readRegister())
-            std::cout << "ERROR: expected a register after command"
-                      << std::endl;
-        // read next item expecting a comma
-        if (!reader.readComma())
-            std::cout << "ERROR: expected a ','" << std::endl;
-
-        // Now comes the part of the input that will vary depending on what
-        // command is used
-        
-        if (reader.get_command() == LI)
-        {
-            // read next item expecting an int
-            if (!reader.readInt())
-                std::cout << "ERROR: expected an int following li command"
-                          << std::endl;
-            
-            reg[reader.get_registerInCalc(0)] = reader.get_intInCalc();
-        }
-
-        if (reader.get_command() == ADD)
-        {
-            // read next item expecting a register
-            if (!reader.readRegister())
-                std::cout << "ERROR: expected a register" << std::endl;
-            // read next item expecting a comma
-            if (!reader.readComma())
-                std::cout << "ERROR: expected a ','" << std::endl;
-            // read next item expecting a register
-            if (!reader.readRegister())
-                std::cout << "ERROR: expected a register" << std::endl;
-
-            // perform add calculation
-            reg[reader.get_registerInCalc(0)]
-                = reg[reader.get_registerInCalc(1)]
-                + reg[reader.get_registerInCalc(2)];
-        }
-
-        if (reader.get_command() == SUB)
-        {
-            // read next item expecting a register
-            if (!reader.readRegister())
-                std::cout << "ERROR: expected a register" << std::endl;
-            // read next item expecting a comma
-            if (!reader.readComma())
-                std::cout << "ERROR: expected a ','" << std::endl;
-            // read next item expecting a register
-            if (!reader.readRegister())
-                std::cout << "ERROR: expected a register" << std::endl;
-
-            // perform add calculation
-            reg[reader.get_registerInCalc(0)]
-                = reg[reader.get_registerInCalc(1)]
-                - reg[reader.get_registerInCalc(2)];
-        }
-        */
