@@ -20,6 +20,8 @@
 #include <iomanip>
 
 const int MAX_BUF = 1024;
+const int TEXT_SEG_MAX_BUF = 40;
+const int TEXT_SEG_MAX_SIZE = 100;
 
 enum Command
 {
@@ -38,7 +40,7 @@ enum Command
     MULTU,
     MFLO,
     MFHI,
-    MUL,
+    //MUL,
     DIV,
     DIVU,
     SEQ,
@@ -51,16 +53,22 @@ enum Command
     // change mode command
     MODE,
     // printing commands
-    REG,
+    PRINT_REG,
+    PRINT_DATA,
+    PRINT_TEXT,
+    // exec (to execute everything in the text and data segment)
+    EXEC,
+    // remove (to remove a line in the text segment)
+    REMOVE,
     // exit command
     EXIT
 };
 
 enum Mode
 {
-    INTERACTIVE,
-    TEXT,
-    DATA
+    MODE_INTERACTIVE,
+    MODE_TEXT,
+    MODE_DATA
 };
 
 // Reader class ===============================================================
@@ -74,6 +82,8 @@ public:
     {}
 
     // methods that read ------------------------------------------------------
+
+    // read line from the user input
     bool readLine()
     {
         std::cin.getline(s, MAX_BUF);
@@ -85,11 +95,28 @@ public:
         }
         return true;
     }
+
+    // read line from the text segment
+    bool readLineTextSegment(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF],
+                             int i)
+    {
+        // this will put characters into s from a line in the data segment
+        // the line that is read is determined by the parameter i
+        for (int j = 0; j < TEXT_SEG_MAX_BUF; ++j)
+        {            
+            s[j] = text[i][j];
+        }
+        return true;
+    }
     
     bool readCommand()
     {
+        if (int(s[i]) == 0)
+        {
+            command = ERROR;
+            return true;
+        }
         // assembly commands
-        moveIndexToNextChar();
         if (s[i] == 'l' && s[i + 1] == 'i')
         {
             command = LI;
@@ -235,11 +262,48 @@ public:
             i += 4;
             return true;
         }
+        // change mode shorcut command
+        else if (s[i] == 'm')
+        {
+            command = MODE;
+            i += 1;
+            return true;
+        }
         // printing commands
         else if (s[i] == 'r' && s[i + 1] == 'e' && s[i + 2] == 'g')
         {
-            command = REG;
+            command = PRINT_REG;
             i += 3;
+            return true;
+        }
+        else if (s[i] == 'd' && s[i + 1] == 'a' && s[i + 2] == 't'
+                 && s[i + 3] == 'a')
+        {
+            command = PRINT_DATA;
+            i += 4;
+            return true;
+        }
+        else if (s[i] == 't' && s[i + 1] == 'e' && s[i + 2] == 'x'
+                 && s[i + 3] == 't')
+        {
+            command = PRINT_TEXT;
+            i += 4;
+            return true;
+        }
+        // exec command (to execute everything in the text and data segment)
+        else if (s[i] == 'e' && s[i + 1] == 'x' && s[i + 2] == 'e'
+                 && s[i + 3] == 'c')
+        {
+            command = EXEC;
+            i += 4;
+            return true;
+        }
+        // remove (to remove a line in the text segment)
+        else if (s[i] == 'r' && s[i + 1] == 'e' && s[i + 2] == 'm'
+                 && s[i + 3] == 'o' && s[i + 4] == 'v' && s[i + 5] == 'e')
+        {
+            command = REMOVE;
+            i += 6;
             return true;
         }
         // exit command
@@ -264,22 +328,23 @@ public:
         if (s[i] == 'i' && s[i + 1] == 'n' && s[i + 2] == 't'
             && s[i + 3] == 'e' && s[i + 4] == 'r'
             && s[i + 5] == 'a' && s[i + 6] == 'c' && s[i + 7] == 't'
-            && s[i + 8] == 'i' && s[i + 9] == 'v' && s[i + 10] == 'e')
+            && s[i + 8] == 'i' && s[i + 9] == 'v' && s[i + 10] == 'e'
+            || s[i] == 'i')
         {
-            mode = INTERACTIVE;
+            mode = MODE_INTERACTIVE;
             return true;
         }
         else if (s[i] == 't' && s[i + 1] == 'e' && s[i + 2] == 'x'
-            && s[i + 3] == 't')
+            && s[i + 3] == 't' || s[i] == 't')
         {
-            mode = TEXT;
+            mode = MODE_TEXT;
             return true;
         }
         else if (s[i] == 'd' && s[i + 1] == 'a' && s[i + 2] == 't'
-            && s[i + 3] == 'a')
+            && s[i + 3] == 'a' || s[i] == 'd')
         {
-            mode = DATA;
-            return true;            
+            mode = MODE_DATA;
+            return true;
         }
         else
         {
@@ -474,7 +539,12 @@ public:
     Mode get_mode()
     {
         return mode;
-    }    
+    }
+
+    char * get_s()
+    {
+        return s;
+    }
 
     // other methods ----------------------------------------------------------
     bool s_isEmpty()
@@ -960,6 +1030,138 @@ void set(Reader reader, int reg[], Command command, int i = 0)
     }
 }
 
+// parse line function
+// the parse line function assumes the initial command has already been read
+// and is being stored in the reader object. Then it parses through the read
+// of the line and performs any nessessary operation
+void parse_line(Reader reader, int reg[], int & hi, int & lo)
+{
+    // based on command branch off to parse through the rest of the
+    // line and perform calcuation
+    switch(reader.get_command())
+    {
+        // assembly commands
+        case LI:
+        {
+            li(reader, reg);
+            break;
+        }
+        case MOVE:
+        {
+            move(reader, reg);
+            break;
+        }
+        case ADD:
+        {
+            add(reader, reg, false);
+            break;
+        }
+        case ADDU:
+        {
+            add(reader, reg, true);
+            break;
+        }
+        case SUB:
+        {
+            sub(reader, reg, false);
+            break;
+        }
+        case SUBU:
+        {
+            sub(reader, reg, true);
+            break;
+        }
+        case ADDI:
+        {
+            addi(reader, reg, false);
+            break;
+        }
+        case ADDIU:
+        {
+            addi(reader, reg, true);
+            break;
+        }
+        case MULT:
+        {
+            mult(reader, reg, hi, lo, false);
+            //std::cout << "lo: " << lo << std::endl;
+            //std::cout << "hi: " << hi << std::endl;
+            break;
+        }
+        case MULTU:
+        {
+            mult(reader, reg, hi, lo, true);
+            //std::cout << "lo: " << lo << std::endl;
+            //std::cout << "hi: " << hi << std::endl;
+            break;
+        }
+        case DIV:
+        {
+            div(reader, reg, hi, lo, false);
+            //std::cout << "lo: " << lo << std::endl;
+            //std::cout << "hi: " << hi << std::endl;
+            break;
+        }
+        case DIVU:
+        {
+            div(reader, reg, hi, lo, true);
+            //std::cout << "lo: " << lo << std::endl;
+            //std::cout << "hi: " << hi << std::endl;
+            break;
+        }
+        case MFLO:
+        {
+            mflo(reader, reg, lo);
+            break;
+        }
+        case MFHI:
+        {
+            mfhi(reader, reg, hi);
+            break;
+        }
+        case SEQ:
+        case SNE:
+        case SGT:
+        case SLT:
+        case SGE:
+        case SLE:
+        case SLTI:
+        {
+            set(reader, reg, reader.get_command());
+            break;
+        }
+    }
+}
+
+/*
+void remove(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF], int & text_size,
+            int index)
+{
+    if (text_size > 0)
+        --text_size;
+}
+*/
+
+// EXEC function
+void exec(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF], int text_size,
+          Reader reader, int reg[], int & hi, int & lo)
+{
+    for (int i = 0; i < text_size; ++i)
+    {
+        reader.readLineTextSegment(text, i);
+        //std::cout << reader.get_s() << std::endl;
+
+        // we must read the first command on the outside of the parse_line
+        // function because this is how it is set up for interactive mode
+        if (!reader.readCommand())
+            std::cout << "ERROR: expected command" << std::endl;
+        parse_line(reader, reg, hi, lo);
+        
+        reader.reset_i();
+        reader.reset_nextRegisterInCalc();
+    }
+}
+
 // print registers function
 void printRegisters(int reg[], const int NUM_RESISTERS)
 {
@@ -999,6 +1201,15 @@ void printRegisters(int reg[], const int NUM_RESISTERS)
               << "R31  (ra) = " << reg[31] << std::endl;
 }
 
+void printText(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF], int text_size)
+{
+    for (int i = 0; i < text_size; ++i)
+    {
+        std::cout << "[0x00" << std::hex << 4194304 + i * 4 << "]    ";
+        std::cout << std::dec << text[i] << std::endl;
+    }
+}
+
 int main()
 {
     // create an array for 32 registers
@@ -1013,11 +1224,30 @@ int main()
     int hi = 0;
     int lo = 0;
 
-    // mode
-    Mode mode = INTERACTIVE;
+    // text segment array
+    char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF];
+    // index to move through text segment when a line is saved it is saved at
+    // this index and then the index will be increased by 1
+    int text_size = 1;
+    /*
+    char a[15] = "hello world";
+    for (int i = 0; i < 15; ++i)
+    {
+        text[0][i] = a[i];
+    }
+    */
+    char b[15] = "li $s0, 1";
+    for (int i = 0; i < TEXT_SEG_MAX_BUF; ++i)
+    {
+        text[0][i] = b[i];
+    }
+    
 
     // create the reader object
     Reader reader;
+
+    // mode
+    Mode mode = MODE_INTERACTIVE;
 
     // if this variable turns to true the program will terminate
     bool exit = false;
@@ -1028,142 +1258,192 @@ int main()
         // print out the current mode and then ">>>"
         switch (mode)
         {
-            case (INTERACTIVE):
+            case (MODE_INTERACTIVE):
                 std::cout << "Interactive ";
                 break;
-            case (TEXT):
+            case (MODE_TEXT):
                 std::cout << "Text ";
                 break;
-            case (DATA):
+            case (MODE_DATA):
                 std::cout << "Data ";
                 break;
         }
         std::cout << ">>> ";
 
         // get input from user
-        //reader.readLine();
         if (!(reader.readLine()))
-            std::cout << "ERROR: readline error" << std::endl; 
+            std::cout << "ERROR: readline error" << std::endl;
 
-        // exit if empty string is entered
-        //if (reader.s_isEmpty())
-        //    break;
+        //std::cout << reader.get_s() << std::endl;
         
-        // read next item expecting a command
-        if (!reader.readCommand())        
-            std::cout << "ERROR: expected command" << std::endl;        
+        // read first item expecting a command
+        if (!reader.readCommand())
+            std::cout << "ERROR: expected command" << std::endl;
 
-        // based on command branch off to parse through the rest of the line
-        // and perform calcuation
-        switch(reader.get_command())
+        // ---------------- commands used across modes -----------------------
+        
+        // check for user changing mode
+        if (reader.get_command() == MODE)
         {
-            // assembly commands
-            case LI:
+            if (!reader.readMode())
+                std::cout << "ERROR: mode not recognized" << std::endl;
+            mode = reader.get_mode();
+        }
+        // check for user printing registers
+        else if (reader.get_command() == PRINT_REG)
+        {                            
+            printRegisters(reg, NUM_REGISTERS);
+        }
+        // check for user printing text segment
+        else if (reader.get_command() == PRINT_TEXT)
+        {
+            printText(text, text_size);
+        }
+        // check for user executing the program in the text and data segment
+        else if (reader.get_command() == EXEC)
+        {
+            // reset for exec
+            reader.reset_i();
+            reader.reset_nextRegisterInCalc();
+            // call exec
+            exec(text, text_size, reader, reg, hi, lo);
+            //std::cout << "I see you exec" << std::endl;
+        }
+        // check for user removing a line from the data segment
+        else if (reader.get_command() == REMOVE)
+        {
+            if (mode == MODE_TEXT)
             {
-                li(reader, reg);
-                break;
+                //remove(text, text_size, text_size - 1);
+                if (text_size > 0)
+                    --text_size;
+                //std::cout << "I see you remove" << std::endl;
             }
-            case MOVE:
+        }
+        // check for user exiting
+        else if (reader.get_command() == EXIT)
+        {
+            exit = true;
+        }
+
+        // -------------------- interactive mode -----------------------------
+        else if (mode == MODE_INTERACTIVE)
+        {
+            parse_line(reader, reg, hi, lo);
+            /*
+            // based on command branch off to parse through the rest of the
+            // line and perform calcuation
+            switch(reader.get_command())
             {
-                move(reader, reg);
-                break;
+                // assembly commands
+                case LI:
+                {
+                    li(reader, reg);
+                    break;
+                }
+                case MOVE:
+                {
+                    move(reader, reg);
+                    break;
+                }
+                case ADD:
+                {
+                    add(reader, reg, false);
+                    break;
+                }
+                case ADDU:
+                {
+                    add(reader, reg, true);
+                    break;
+                }
+                case SUB:
+                {
+                    sub(reader, reg, false);
+                    break;
+                }
+                case SUBU:
+                {
+                    sub(reader, reg, true);
+                    break;
+                }
+                case ADDI:
+                {
+                    addi(reader, reg, false);
+                    break;
+                }
+                case ADDIU:
+                {
+                    addi(reader, reg, true);
+                    break;
+                }
+                case MULT:
+                {
+                    mult(reader, reg, hi, lo, false);
+                    std::cout << "lo: " << lo << std::endl;
+                    std::cout << "hi: " << hi << std::endl;
+                    break;
+                }
+                case MULTU:
+                {
+                    mult(reader, reg, hi, lo, true);
+                    std::cout << "lo: " << lo << std::endl;
+                    std::cout << "hi: " << hi << std::endl;
+                    break;
+                }
+                case DIV:
+                {
+                    div(reader, reg, hi, lo, false);
+                    std::cout << "lo: " << lo << std::endl;
+                    std::cout << "hi: " << hi << std::endl;
+                    break;
+                }
+                case DIVU:
+                {
+                    div(reader, reg, hi, lo, true);
+                    std::cout << "lo: " << lo << std::endl;
+                    std::cout << "hi: " << hi << std::endl;
+                    break;
+                }
+                case MFLO:
+                {
+                    mflo(reader, reg, lo);
+                    break;
+                }
+                case MFHI:
+                {
+                    mfhi(reader, reg, hi);
+                    break;
+                }
+                case SEQ:
+                case SNE:
+                case SGT:
+                case SLT:
+                case SGE:
+                case SLE:
+                case SLTI:
+                {
+                    set(reader, reg, reader.get_command());
+                    break;
+                }
             }
-            case ADD:
+            */
+        }
+        
+        // ---------------------- text mode ----------------------------------
+        else if (mode == MODE_TEXT)
+        {
+            // create a pointer to the inputed string
+            char * s = reader.get_s();
+            // reset the i and recheck if the first command was valid
+            // and only send the line into the text segment if so
+            reader.reset_i();
+            if (reader.readCommand())
             {
-                add(reader, reg, false);
-                break;
-            }
-            case ADDU:
-            {
-                add(reader, reg, true);
-                break;
-            }
-            case SUB:
-            {
-                sub(reader, reg, false);
-                break;
-            }
-            case SUBU:
-            {
-                sub(reader, reg, true);
-                break;
-            }
-            case ADDI:
-            {
-                addi(reader, reg, false);
-                break;
-            }
-            case ADDIU:
-            {
-                addi(reader, reg, true);
-                break;
-            }
-            case MULT:
-            {
-                mult(reader, reg, hi, lo, false);
-                std::cout << "lo: " << lo << std::endl;
-                std::cout << "hi: " << hi << std::endl;
-                break;
-            }
-            case MULTU:
-            {
-                mult(reader, reg, hi, lo, true);
-                std::cout << "lo: " << lo << std::endl;
-                std::cout << "hi: " << hi << std::endl;
-                break;
-            }
-            case DIV:
-            {
-                div(reader, reg, hi, lo, false);
-                std::cout << "lo: " << lo << std::endl;
-                std::cout << "hi: " << hi << std::endl;
-                break;
-            }
-            case DIVU:
-            {
-                div(reader, reg, hi, lo, true);
-                std::cout << "lo: " << lo << std::endl;
-                std::cout << "hi: " << hi << std::endl;
-                break;
-            }
-            case MFLO:
-            {
-                mflo(reader, reg, lo);
-                break;
-            }
-            case MFHI:
-            {
-                mfhi(reader, reg, hi);
-                break;
-            }
-            case SEQ:
-            case SNE:
-            case SGT:
-            case SLT:
-            case SGE:
-            case SLE:
-            case SLTI:
-            {
-                set(reader, reg, reader.get_command());
-                break;
-            }
-            // mode change command
-            case MODE:
-            {
-                if (!reader.readMode())
-                    std::cout << "ERROR: mode not recognized" << std::endl;
-                mode = reader.get_mode();
-                break;
-            }
-            // printing commands
-            case REG:
-            {                
-                printRegisters(reg, NUM_REGISTERS);
-                break;
-            }
-            case EXIT:
-            {
-                exit = true;
+                for (int i = 0; i < TEXT_SEG_MAX_BUF; ++i)
+                {
+                    text[text_size][i] = s[i];
+                }
+                ++text_size;
             }
         }
 
