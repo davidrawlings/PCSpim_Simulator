@@ -18,9 +18,11 @@
 #include <limits>
 #include <cmath>
 #include <iomanip>
+#include <fstream>
+#include <string>
 
 const int MAX_BUF = 1024;
-const int TEXT_SEG_MAX_BUF = 40;
+const int TEXT_SEG_MAX_BUF = 80;
 const int TEXT_SEG_MAX_SIZE = 100;
 
 enum Command
@@ -50,6 +52,7 @@ enum Command
     SLE,
     SGE,
     SLTI,
+    SYSCALL,
     // change mode command
     MODE,
     // printing commands
@@ -93,6 +96,13 @@ public:
             std::cin.clear();
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
+        /*
+        for (int i = 0; i < MAX_BUF; ++i)
+        {
+            if (s[i] == 0)
+                s[i] = 32;
+        }
+        */
         return true;
     }
 
@@ -111,13 +121,16 @@ public:
     
     bool readCommand()
     {
+        moveIndexToNextChar();
+        // when the user just presses enter with nothing inputed
         if (int(s[i]) == 0)
         {
             command = ERROR;
             return true;
         }
         // assembly commands
-        if (s[i] == 'l' && s[i + 1] == 'i')
+        if (s[i] == 'l' && s[i + 1] == 'i'
+            && (s[i + 2] == 32 || s[i + 2] == 0 || s[i + 2] == 9))
         {
             command = LI;
             i += 2;
@@ -254,37 +267,50 @@ public:
             i += 3;
             return true;
         }
+        else if (s[i] == 's' && s[i + 1] == 'y' && s[i + 2] == 's'
+                 && s[i + 3] == 'c' && s[i + 4] == 'a' && s[i + 5] == 'l'
+                 && s[i + 6] == 'l'
+                 && (s[i + 7] == 32 || s[i + 7] == 0 || s[i + 7] == 9))
+        {
+            command = SYSCALL;
+            i += 7;
+            return true;
+        }
         // change mode command
         else if (s[i] == 'm' && s[i + 1] == 'o' && s[i + 2] == 'd'
-                 && s[i + 3] == 'e')
+                 && s[i + 3] == 'e'
+                 && (s[i + 4] == 32 || s[i + 4] == 0 || s[i + 4] == 9))
         {
             command = MODE;
             i += 4;
             return true;
         }
         // change mode shorcut command
-        else if (s[i] == 'm')
+        else if (s[i] == 'm'
+                 && (s[i + 1] == 32 || s[i + 1] == 0 || s[i + 1] == 9))
         {
             command = MODE;
             i += 1;
             return true;
         }
         // printing commands
-        else if (s[i] == 'r' && s[i + 1] == 'e' && s[i + 2] == 'g')
+        else if (s[i] == 'r' && s[i + 1] == 'e' && s[i + 2] == 'g'
+                 && (s[i + 3] == 32 || s[i + 3] == 0 || s[i + 3] == 9))
         {
             command = PRINT_REG;
             i += 3;
             return true;
         }
         else if (s[i] == 'd' && s[i + 1] == 'a' && s[i + 2] == 't'
-                 && s[i + 3] == 'a')
+                 && s[i + 3] == 'a' && (s[i + 4] == 32 || s[i + 4] == 0))
         {
             command = PRINT_DATA;
             i += 4;
             return true;
         }
         else if (s[i] == 't' && s[i + 1] == 'e' && s[i + 2] == 'x'
-                 && s[i + 3] == 't')
+                 && s[i + 3] == 't'
+                 && (s[i + 4] == 32 || s[i + 4] == 0 || s[i + 4] == 9))
         {
             command = PRINT_TEXT;
             i += 4;
@@ -292,7 +318,8 @@ public:
         }
         // exec command (to execute everything in the text and data segment)
         else if (s[i] == 'e' && s[i + 1] == 'x' && s[i + 2] == 'e'
-                 && s[i + 3] == 'c')
+                 && s[i + 3] == 'c'
+                 && (s[i + 4] == 32 || s[i + 4] == 0 || s[i + 4] == 9))
         {
             command = EXEC;
             i += 4;
@@ -300,7 +327,8 @@ public:
         }
         // remove (to remove a line in the text segment)
         else if (s[i] == 'r' && s[i + 1] == 'e' && s[i + 2] == 'm'
-                 && s[i + 3] == 'o' && s[i + 4] == 'v' && s[i + 5] == 'e')
+                 && s[i + 3] == 'o' && s[i + 4] == 'v' && s[i + 5] == 'e'
+                 && (s[i + 6] == 32 || s[i + 6] == 0 || s[i + 6] == 9))
         {
             command = REMOVE;
             i += 6;
@@ -308,7 +336,8 @@ public:
         }
         // exit command
         else if (s[i] == 'e' && s[i + 1] == 'x' && s[i + 2] == 'i'
-                 && s[i + 3] == 't')
+                 && s[i + 3] == 't'
+                 && (s[i + 4] == 32 || s[i + 4] == 0 || s[i + 4] == 9))
         {
             command = EXIT;
             i += 4;
@@ -325,23 +354,36 @@ public:
     bool readMode()
     {
         moveIndexToNextChar();
+        /*
+        std::cout << int(s[i + 4]) << std::endl;
+        std::cout << s[i + 4] << std::endl;
+        std::cout << (s[i + 4] == 32) << std::endl;
+        */
         if (s[i] == 'i' && s[i + 1] == 'n' && s[i + 2] == 't'
             && s[i + 3] == 'e' && s[i + 4] == 'r'
             && s[i + 5] == 'a' && s[i + 6] == 'c' && s[i + 7] == 't'
             && s[i + 8] == 'i' && s[i + 9] == 'v' && s[i + 10] == 'e'
-            || s[i] == 'i')
+            && (s[i + 11] == 32 || s[i + 11] == 0 || s[i + 11] == 9)
+            || s[i] == 'i'
+            && (s[i + 1] == 32 || s[i + 1] == 0 || s[i + 1] == 9))
         {
             mode = MODE_INTERACTIVE;
             return true;
         }
         else if (s[i] == 't' && s[i + 1] == 'e' && s[i + 2] == 'x'
-            && s[i + 3] == 't' || s[i] == 't')
+                 && s[i + 3] == 't'
+                 && (s[i + 4] == 32 || s[i + 4] == 0 || s[i + 4] == 9)
+                 || s[i] == 't'
+                 && (s[i + 1] == 32 || s[i + 1] == 0 || s[i + 1] == 9))
         {
             mode = MODE_TEXT;
             return true;
         }
         else if (s[i] == 'd' && s[i + 1] == 'a' && s[i + 2] == 't'
-            && s[i + 3] == 'a' || s[i] == 'd')
+                 && s[i + 3] == 'a'
+                 && (s[i + 4] == 32 || s[i + 4] == 0 || s[i + 4] == 9)
+                 || s[i] == 'd'
+                 && (s[i + 1] == 32 || s[i + 1] == 0 || s[i + 1] == 9))
         {
             mode = MODE_DATA;
             return true;
@@ -504,7 +546,7 @@ public:
 
     void moveIndexToNextChar()
     {
-        while (s[i] == ' ')
+        while (s[i] == 32 || s[i] == 9)
         {
             ++i;
         }
@@ -581,28 +623,35 @@ private:
 };
 
 // LI function
-void li(Reader reader, int reg[])
+void li(Reader reader, int reg[], int line = -1)
 {
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register after command"
-                  << std::endl;
+        std::cout << "ERROR: expected a register after command";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a comma
     if (!reader.readComma())
     {
-        std::cout << "ERROR: expected a ','" << std::endl;
+        std::cout << "ERROR: expected a ','";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting an int
     if (!reader.readInt())
     {
-        std::cout << "ERROR: expected an int following li command"
-                  << std::endl;
+        std::cout << "ERROR: expected an int following li command";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
@@ -611,27 +660,35 @@ void li(Reader reader, int reg[])
 }
 
 // MOVE function
-void move(Reader reader, int reg[])
+void move(Reader reader, int reg[], int line = -1)
 {
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register after command"
-                  << std::endl;
+        std::cout << "ERROR: expected a register after command";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a comma
     if (!reader.readComma())
     {
-       std::cout << "ERROR: expected a ','" << std::endl;
-       return;
+        std::cout << "ERROR: expected a ','";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout  << std::endl;
+        return;
     }
     
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register" << std::endl;
+        std::cout << "ERROR: expected a register";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
@@ -641,41 +698,55 @@ void move(Reader reader, int reg[])
 }
 
 // ADD function
-void add(Reader reader, int reg[], bool usingUnsigned)
+void add(Reader reader, int reg[], bool usingUnsigned, int line = -1)
 {
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register after command"
-                  << std::endl;
+        std::cout << "ERROR: expected a register after command";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a comma
     if (!reader.readComma())
     {
-        std::cout << "ERROR: expected a ','" << std::endl;
+        std::cout << "ERROR: expected a ','";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register" << std::endl;
+        std::cout << "ERROR: expected a register";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a comma
     if (!reader.readComma())
     {
-        std::cout << "ERROR: expected a ','" << std::endl;
+        std::cout << "ERROR: expected a ','";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register" << std::endl;
+        std::cout << "ERROR: expected a register";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
 
@@ -696,7 +767,7 @@ void add(Reader reader, int reg[], bool usingUnsigned)
 }
 
 // SUB function
-void sub(Reader reader, int reg[], bool usingUnsigned)
+void sub(Reader reader, int reg[], bool usingUnsigned, int line = -1)
 {
     // read next item expecting a register
     if (!reader.readRegister())
@@ -709,28 +780,40 @@ void sub(Reader reader, int reg[], bool usingUnsigned)
     // read next item expecting a comma
     if (!reader.readComma())
     {
-       std::cout << "ERROR: expected a ','" << std::endl;
+       std::cout << "ERROR: expected a ','";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
        return;
     }
     
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register" << std::endl;
+        std::cout << "ERROR: expected a register";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a comma
     if (!reader.readComma())
     {
-        std::cout << "ERROR: expected a ','" << std::endl;
+        std::cout << "ERROR: expected a ','";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register" << std::endl;
+        std::cout << "ERROR: expected a register";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
@@ -752,42 +835,55 @@ void sub(Reader reader, int reg[], bool usingUnsigned)
 }
 
 // ADDI function
-void addi(Reader reader, int reg[], bool usingUnsigned)
+void addi(Reader reader, int reg[], bool usingUnsigned, int line = -1)
 {
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register after command"
-                  << std::endl;
+        std::cout << "ERROR: expected a register after command";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a comma
     if (!reader.readComma())
     {
-        std::cout << "ERROR: expected a ','" << std::endl;
+        std::cout << "ERROR: expected a ','";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register" << std::endl;
+        std::cout << "ERROR: expected a register";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a comma
     if (!reader.readComma())
     {
-        std::cout << "ERROR: expected a ','" << std::endl;
+        std::cout << "ERROR: expected a ','";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting an int
     if (!reader.readInt())
     {
-        std::cout << "ERROR: expected an int"
-                  << std::endl;
+        std::cout << "ERROR: expected an int";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
 
@@ -808,27 +904,36 @@ void addi(Reader reader, int reg[], bool usingUnsigned)
 }
 
 // MULT function
-void mult(Reader reader, int reg[], int & hi, int & lo, bool usingUnsigned)
+void mult(Reader reader, int reg[], int & hi, int & lo, bool usingUnsigned,
+          int line = -1)
 {
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register after command"
-                  << std::endl;
+        std::cout << "ERROR: expected a register after command";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a comma
     if (!reader.readComma())
     {
-        std::cout << "ERROR: expected a ','" << std::endl;
+        std::cout << "ERROR: expected a ','";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register" << std::endl;
+        std::cout << "ERROR: expected a register";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
 
@@ -855,13 +960,15 @@ void mult(Reader reader, int reg[], int & hi, int & lo, bool usingUnsigned)
 }
 
 // MFLO function
-void mflo(Reader reader, int reg[], int lo)
+void mflo(Reader reader, int reg[], int lo, int line = -1)
 {
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register after command"
-                  << std::endl;
+        std::cout << "ERROR: expected a register after command";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
 
@@ -870,13 +977,15 @@ void mflo(Reader reader, int reg[], int lo)
 }
 
 // MFLO function
-void mfhi(Reader reader, int reg[], int hi)
+void mfhi(Reader reader, int reg[], int hi, int line = -1)
 {
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register after command"
-                  << std::endl;
+        std::cout << "ERROR: expected a register after command";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
 
@@ -885,27 +994,36 @@ void mfhi(Reader reader, int reg[], int hi)
 }
 
 // DIV function
-void div(Reader reader, int reg[], int & hi, int & lo, bool usingUnsigned)
+void div(Reader reader, int reg[], int & hi, int & lo, bool usingUnsigned,
+         int line = -1)
 {
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register after command"
-                  << std::endl;
+        std::cout << "ERROR: expected a register after command";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a comma
     if (!reader.readComma())
     {
-        std::cout << "ERROR: expected a ','" << std::endl;
+        std::cout << "ERROR: expected a ','";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register" << std::endl;
+        std::cout << "ERROR: expected a register";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
 
@@ -928,34 +1046,45 @@ void div(Reader reader, int reg[], int & hi, int & lo, bool usingUnsigned)
 }
 
 // SET function
-void set(Reader reader, int reg[], Command command, int i = 0)
+void set(Reader reader, int reg[], Command command, int i = 0, int line = -1)
 {
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register after command"
-                  << std::endl;
+        std::cout << "ERROR: expected a register after command";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a comma
     if (!reader.readComma())
     {
-        std::cout << "ERROR: expected a ','" << std::endl;
+        std::cout << "ERROR: expected a ','";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a register
     if (!reader.readRegister())
     {
-        std::cout << "ERROR: expected a register" << std::endl;
+        std::cout << "ERROR: expected a register";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
     
     // read next item expecting a comma
     if (!reader.readComma())
     {
-        std::cout << "ERROR: expected a ','" << std::endl;
+        std::cout << "ERROR: expected a ','";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
         return;
     }
 
@@ -964,7 +1093,10 @@ void set(Reader reader, int reg[], Command command, int i = 0)
         // read next item expecting a register
         if (!reader.readRegister())
         {
-            std::cout << "ERROR: expected a register" << std::endl;
+            std::cout << "ERROR: expected a register";
+            if (line != -1)
+                std::cout << " line " << line;
+            std::cout << std::endl;
             return;
         }
     }
@@ -973,8 +1105,10 @@ void set(Reader reader, int reg[], Command command, int i = 0)
         // read next item expecting an int
         if (!reader.readInt())
         {
-            std::cout << "ERROR: expected an int"
-                      << std::endl;
+            std::cout << "ERROR: expected an int";
+        if (line != -1)
+            std::cout << " line " << line;
+        std::cout << std::endl;
             return;
         }
     }
@@ -1030,11 +1164,30 @@ void set(Reader reader, int reg[], Command command, int i = 0)
     }
 }
 
+// syscall function (unlike many of the command functions the bool returned
+// does not indicate an error.)
+bool syscall(int reg[], bool & exit)
+{
+    if (reg[2] == 1)
+    {
+        std::cout << reg[4] << std::endl;
+    }
+    if (reg[2] == 5)
+    {
+        std::cin >> reg[2];
+    }
+    if (reg[2] == 10)
+    {
+        exit = true;
+    }
+}
+
 // parse line function
 // the parse line function assumes the initial command has already been read
 // and is being stored in the reader object. Then it parses through the read
 // of the line and performs any nessessary operation
-void parse_line(Reader reader, int reg[], int & hi, int & lo)
+void parse_line(Reader reader, int reg[], int & hi, int & lo, bool & exit,
+                int line = -1)
 {
     // based on command branch off to parse through the rest of the
     // line and perform calcuation
@@ -1043,80 +1196,80 @@ void parse_line(Reader reader, int reg[], int & hi, int & lo)
         // assembly commands
         case LI:
         {
-            li(reader, reg);
+            li(reader, reg, line);
             break;
         }
         case MOVE:
         {
-            move(reader, reg);
+            move(reader, reg, line);
             break;
         }
         case ADD:
         {
-            add(reader, reg, false);
+            add(reader, reg, false, line);
             break;
         }
         case ADDU:
         {
-            add(reader, reg, true);
+            add(reader, reg, true, line);
             break;
         }
         case SUB:
         {
-            sub(reader, reg, false);
+            sub(reader, reg, false, line);
             break;
         }
         case SUBU:
         {
-            sub(reader, reg, true);
+            sub(reader, reg, true, line);
             break;
         }
         case ADDI:
         {
-            addi(reader, reg, false);
+            addi(reader, reg, false, line);
             break;
         }
         case ADDIU:
         {
-            addi(reader, reg, true);
+            addi(reader, reg, true, line);
             break;
         }
         case MULT:
         {
-            mult(reader, reg, hi, lo, false);
+            mult(reader, reg, hi, lo, false, line);
             //std::cout << "lo: " << lo << std::endl;
             //std::cout << "hi: " << hi << std::endl;
             break;
         }
         case MULTU:
         {
-            mult(reader, reg, hi, lo, true);
+            mult(reader, reg, hi, lo, true, line);
             //std::cout << "lo: " << lo << std::endl;
             //std::cout << "hi: " << hi << std::endl;
             break;
         }
         case DIV:
         {
-            div(reader, reg, hi, lo, false);
+            div(reader, reg, hi, lo, false, line);
             //std::cout << "lo: " << lo << std::endl;
             //std::cout << "hi: " << hi << std::endl;
             break;
         }
         case DIVU:
         {
-            div(reader, reg, hi, lo, true);
+            div(reader, reg, hi, lo, true, line);
             //std::cout << "lo: " << lo << std::endl;
             //std::cout << "hi: " << hi << std::endl;
             break;
         }
         case MFLO:
         {
-            mflo(reader, reg, lo);
+            mflo(reader, reg, lo, line);
             break;
         }
         case MFHI:
         {
-            mfhi(reader, reg, hi);
+            mfhi(reader, reg, hi, line);
             break;
         }
         case SEQ:
@@ -1127,7 +1280,12 @@ void parse_line(Reader reader, int reg[], int & hi, int & lo)
         case SLE:
         case SLTI:
         {
-            set(reader, reg, reader.get_command());
+            set(reader, reg, reader.get_command(), line);
+            break;
+        }
+        case SYSCALL:
+        {
+            syscall(reg, exit);
             break;
         }
     }
@@ -1144,7 +1302,7 @@ void remove(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF], int & text_size,
 
 // EXEC function
 void exec(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF], int text_size,
-          Reader reader, int reg[], int & hi, int & lo)
+          Reader reader, int reg[], int & hi, int & lo, bool & exit)
 {
     for (int i = 0; i < text_size; ++i)
     {
@@ -1154,8 +1312,9 @@ void exec(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF], int text_size,
         // we must read the first command on the outside of the parse_line
         // function because this is how it is set up for interactive mode
         if (!reader.readCommand())
-            std::cout << "ERROR: expected command" << std::endl;
-        parse_line(reader, reg, hi, lo);
+            std::cout << "ERROR: command not recognized" << " line " << i + 1
+                      << std::endl;
+        parse_line(reader, reg, hi, lo, exit, i + 1);
         
         reader.reset_i();
         reader.reset_nextRegisterInCalc();
@@ -1210,6 +1369,41 @@ void printText(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF], int text_size)
     }
 }
 
+void readFileToTextSegment(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF],
+                           int & text_size, Reader reader)
+{
+    std::ifstream f("12-9-15.s", std::ios::in);
+    std::string s;
+
+    std::cout << "reading file..." << std::endl;
+    
+    for (int i = 0; !f.eof(); ++i)
+    {
+        std::getline(f, s);
+
+        std::cout << s << std::endl;
+
+        // remove bad char        
+        for (int j = 0; j < TEXT_SEG_MAX_BUF; ++j)
+        {
+            if (s[j] == 13)
+                s[j] = 0;
+        }
+        
+        for (int j = 0; j < TEXT_SEG_MAX_BUF; ++j)
+        {
+            //std::cout << "s[" << j << "] char: " << s[j]
+            //          << ", int: " << int(s[j])
+            //          << std::endl;
+            text[i][j] = s[j];
+        }
+        //std::cout << std::endl;
+        ++text_size;
+    }
+    
+    std::cout << "file has been read..." << std::endl;
+}
+
 int main()
 {
     // create an array for 32 registers
@@ -1228,7 +1422,7 @@ int main()
     char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF];
     // index to move through text segment when a line is saved it is saved at
     // this index and then the index will be increased by 1
-    int text_size = 1;
+    int text_size = 0;
     /*
     char a[15] = "hello world";
     for (int i = 0; i < 15; ++i)
@@ -1236,15 +1430,19 @@ int main()
         text[0][i] = a[i];
     }
     */
+    /*
     char b[15] = "li $s0, 1";
     for (int i = 0; i < TEXT_SEG_MAX_BUF; ++i)
     {
         text[0][i] = b[i];
     }
-    
+    */
 
     // create the reader object
     Reader reader;
+
+    // read a file
+    readFileToTextSegment(text, text_size, reader);
 
     // mode
     Mode mode = MODE_INTERACTIVE;
@@ -1278,7 +1476,7 @@ int main()
         
         // read first item expecting a command
         if (!reader.readCommand())
-            std::cout << "ERROR: expected command" << std::endl;
+            std::cout << "ERROR: command not recognized" << std::endl;
 
         // ---------------- commands used across modes -----------------------
         
@@ -1306,7 +1504,7 @@ int main()
             reader.reset_i();
             reader.reset_nextRegisterInCalc();
             // call exec
-            exec(text, text_size, reader, reg, hi, lo);
+            exec(text, text_size, reader, reg, hi, lo, exit);
             //std::cout << "I see you exec" << std::endl;
         }
         // check for user removing a line from the data segment
@@ -1329,7 +1527,7 @@ int main()
         // -------------------- interactive mode -----------------------------
         else if (mode == MODE_INTERACTIVE)
         {
-            parse_line(reader, reg, hi, lo);
+            parse_line(reader, reg, hi, lo, exit);
             /*
             // based on command branch off to parse through the rest of the
             // line and perform calcuation
