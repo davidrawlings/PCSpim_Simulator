@@ -1,6 +1,5 @@
 // ============================================================================
 // David Rawlings
-// Doug
 // ============================================================================
 // ciss360 final project 2
 // ============================================================================
@@ -1372,7 +1371,7 @@ void printText(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF], int text_size)
 void readFileToTextSegment(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF],
                            int & text_size, Reader reader)
 {
-    std::ifstream f("12-9-15.s", std::ios::in);
+    std::ifstream f("file.s", std::ios::in);
     std::string s;
 
     std::cout << "reading file..." << std::endl;
