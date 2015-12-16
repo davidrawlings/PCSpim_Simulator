@@ -95,13 +95,6 @@ public:
             std::cin.clear();
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
-        /*
-        for (int i = 0; i < MAX_BUF; ++i)
-        {
-            if (s[i] == 0)
-                s[i] = 32;
-        }
-        */
         return true;
     }
 
@@ -116,7 +109,7 @@ public:
             s[j] = text[i][j];
         }
         return true;
-    }
+    } 
     
     bool readCommand()
     {
@@ -353,11 +346,6 @@ public:
     bool readMode()
     {
         moveIndexToNextChar();
-        /*
-        std::cout << int(s[i + 4]) << std::endl;
-        std::cout << s[i + 4] << std::endl;
-        std::cout << (s[i + 4] == 32) << std::endl;
-        */
         if (s[i] == 'i' && s[i + 1] == 'n' && s[i + 2] == 't'
             && s[i + 3] == 'e' && s[i + 4] == 'r'
             && s[i + 5] == 'a' && s[i + 6] == 'c' && s[i + 7] == 't'
@@ -1236,29 +1224,21 @@ void parse_line(Reader reader, int reg[], int & hi, int & lo, bool & exit,
         case MULT:
         {
             mult(reader, reg, hi, lo, false, line);
-            //std::cout << "lo: " << lo << std::endl;
-            //std::cout << "hi: " << hi << std::endl;
             break;
         }
         case MULTU:
         {
             mult(reader, reg, hi, lo, true, line);
-            //std::cout << "lo: " << lo << std::endl;
-            //std::cout << "hi: " << hi << std::endl;
             break;
         }
         case DIV:
         {
             div(reader, reg, hi, lo, false, line);
-            //std::cout << "lo: " << lo << std::endl;
-            //std::cout << "hi: " << hi << std::endl;
             break;
         }
         case DIVU:
         {
             div(reader, reg, hi, lo, true, line);
-            //std::cout << "lo: " << lo << std::endl;
-            //std::cout << "hi: " << hi << std::endl;
             break;
         }
         case MFLO:
@@ -1290,15 +1270,6 @@ void parse_line(Reader reader, int reg[], int & hi, int & lo, bool & exit,
     }
 }
 
-/*
-void remove(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF], int & text_size,
-            int index)
-{
-    if (text_size > 0)
-        --text_size;
-}
-*/
-
 // EXEC function
 void exec(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF], int text_size,
           Reader reader, int reg[], int & hi, int & lo, bool & exit)
@@ -1306,14 +1277,13 @@ void exec(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF], int text_size,
     for (int i = 0; i < text_size; ++i)
     {
         reader.readLineTextSegment(text, i);
-        //std::cout << reader.get_s() << std::endl;
 
         // we must read the first command on the outside of the parse_line
         // function because this is how it is set up for interactive mode
         if (!reader.readCommand())
-            std::cout << "ERROR: command not recognized" << " line " << i + 1
+            std::cout << "ERROR: command not recognized" << " line " << i + 4
                       << std::endl;
-        parse_line(reader, reg, hi, lo, exit, i + 1);
+        parse_line(reader, reg, hi, lo, exit, i + 4);
         
         reader.reset_i();
         reader.reset_nextRegisterInCalc();
@@ -1366,7 +1336,90 @@ void printText(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF], int text_size)
         std::cout << "[0x00" << std::hex << 4194304 + i * 4 << "]    ";
         std::cout << std::dec << text[i] << std::endl;
     }
+
+    
 }
+
+void moveToNextChar(std::string & s, int & i)
+{
+    while (s[i] == 32 || s[i] == 9)
+    {
+        ++i;
+    }    
+}
+
+// read the first 3 lines of a .s file
+bool readFirstThreeLines(std::ifstream & f, std::string & s)
+{   
+    /*
+    for (int i = 0; i < 10; ++i)
+    {
+        std::cout << s[i] << ' ';
+    }
+    std::cout << std::endl;
+    for (int i = 0; i < 10; ++i)
+    {
+        std::cout << int(s[i]) << ' ';
+    }
+    std::cout << std::endl;
+    */
+
+    /*
+    int i = 0;
+    while (s[i] == 32 || s[i] == 9)
+    {
+        ++i;
+    }
+    */
+
+    int i;
+
+    std::getline(f, s);
+    i = 0;
+    moveToNextChar(s, i);
+    if (!(s[i] == '.' && s[i + 1] == 't' && s[i + 2] == 'e'
+          && s[i + 3] == 'x' && s[i + 4] == 't'
+          && (s[i + 5] == 32 || s[i + 5] == 0 || s[i + 5] == 9
+              || s[i + 5] == 13)))
+    {
+        std::cout << "\nERROR: expected \".text\" at the top of the .s file, "
+                  << "line 1 \n";
+        return false;        
+    }
+    std::cout << s << std::endl;
+
+    std::getline(f, s);
+    i = 0;
+    moveToNextChar(s, i);
+    if (!(s[i] == '.' && s[i + 1] == 'g' && s[i + 2] == 'l'
+          && s[i + 3] == 'o' && s[i + 4] == 'b' && s[i + 5] == 'l'
+          && s[i + 6] == ' ' && s[i + 7] == 'm' && s[i + 8] == 'a'
+          && s[i + 9] == 'i' && s[i + 10] == 'n'
+          && (s[i + 11] == 32 || s[i + 11] == 0 || s[i + 11] == 9
+              || s[i + 11] == 13)))
+    {
+        std::cout << "\nERROR: expected \".globl main\" at the top of the .s"
+                  << " file, line 2\n";
+        return false;        
+    }
+    std::cout << s << std::endl;
+
+    std::getline(f, s);
+    i = 0;
+    moveToNextChar(s, i);
+    if (!(s[i] == 'm' && s[i + 1] == 'a' && s[i + 2] == 'i'
+          && s[i + 3] == 'n' && s[i + 4] == ':'
+          && (s[i + 5] == 32 || s[i + 5] == 0 || s[i + 5] == 9
+              || s[i + 5] == 13)))
+    {
+        std::cout << "\nERROR: expected \"main:\" at the top of the .s file, "
+                  << "line 3\n";
+        return false;        
+    }
+    std::cout << s << std::endl;
+    
+    return true;
+}   
 
 void readFileToTextSegment(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF],
                            int & text_size, Reader reader)
@@ -1375,6 +1428,9 @@ void readFileToTextSegment(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF],
     std::string s;
 
     std::cout << "reading file..." << std::endl;
+    
+    if (!(readFirstThreeLines(f, s)))
+        return;
     
     for (int i = 0; !f.eof(); ++i)
     {
@@ -1391,20 +1447,42 @@ void readFileToTextSegment(char text[TEXT_SEG_MAX_SIZE][TEXT_SEG_MAX_BUF],
         
         for (int j = 0; j < TEXT_SEG_MAX_BUF; ++j)
         {
-            //std::cout << "s[" << j << "] char: " << s[j]
-            //          << ", int: " << int(s[j])
-            //          << std::endl;
             text[i][j] = s[j];
         }
-        //std::cout << std::endl;
         ++text_size;
     }
     
     std::cout << "file has been read..." << std::endl;
 }
 
-int main()
+void print_tutorial()
 {
+    std::cout << std::endl
+              << "Welcome to the Spimulator! (PC Spim Simulator)\n"
+              << "There are 3 modes (Interactive, Text, Data).\n"
+              << "You can change from mode to mode using the mode command.\n"
+              << "Ex: \"mode text\" will change the mode to text.\n"
+              << "You can also change mode by appreviating to one letter.\n"
+              << "Ex: \"m i\" will change the mode to interactive.\n\n"
+              << "To print the registers \"reg\"\n"
+              << "To print the text segment \"text\"\n"
+              << "To print the data segment \"data\"\n\n"
+              << "In interactive mode you can enter in simple MIPS\n"
+              << "instructions that are immediately interperted by the\n"
+              << "simulator and will change the registers.\n\n"
+              << "In text mode you can enter in instructions just like in\n"
+              << "interactive mode but the instructions are saved into the\n"
+              << "text segment. While in text mode you can use the\n"
+              << "\"remove\" command to remove the most recent line from\n"
+              << "the text segment. You can use the \"exec\" command to \n"
+              << "execute all the commands in the text segment.\n\n"
+              << "The simulator will automatically read the \"file.s\" into\n"
+              << "the text segment.\n"
+              << std::endl;
+}
+
+int main()
+{        
     // create an array for 32 registers
     const int NUM_REGISTERS = 32;
     int reg[NUM_REGISTERS] = {0};
@@ -1422,13 +1500,6 @@ int main()
     // index to move through text segment when a line is saved it is saved at
     // this index and then the index will be increased by 1
     int text_size = 0;
-    /*
-    char a[15] = "hello world";
-    for (int i = 0; i < 15; ++i)
-    {
-        text[0][i] = a[i];
-    }
-    */
     /*
     char b[15] = "li $s0, 1";
     for (int i = 0; i < TEXT_SEG_MAX_BUF; ++i)
@@ -1449,6 +1520,9 @@ int main()
     // if this variable turns to true the program will terminate
     bool exit = false;
 
+    // print tutorial instructions for using the simulator
+    print_tutorial();
+    
     // main loop
     while (!exit)
     {
@@ -1470,8 +1544,6 @@ int main()
         // get input from user
         if (!(reader.readLine()))
             std::cout << "ERROR: readline error" << std::endl;
-
-        //std::cout << reader.get_s() << std::endl;
         
         // read first item expecting a command
         if (!reader.readCommand())
@@ -1504,17 +1576,14 @@ int main()
             reader.reset_nextRegisterInCalc();
             // call exec
             exec(text, text_size, reader, reg, hi, lo, exit);
-            //std::cout << "I see you exec" << std::endl;
         }
         // check for user removing a line from the data segment
         else if (reader.get_command() == REMOVE)
         {
             if (mode == MODE_TEXT)
             {
-                //remove(text, text_size, text_size - 1);
                 if (text_size > 0)
                     --text_size;
-                //std::cout << "I see you remove" << std::endl;
             }
         }
         // check for user exiting
@@ -1527,103 +1596,6 @@ int main()
         else if (mode == MODE_INTERACTIVE)
         {
             parse_line(reader, reg, hi, lo, exit);
-            /*
-            // based on command branch off to parse through the rest of the
-            // line and perform calcuation
-            switch(reader.get_command())
-            {
-                // assembly commands
-                case LI:
-                {
-                    li(reader, reg);
-                    break;
-                }
-                case MOVE:
-                {
-                    move(reader, reg);
-                    break;
-                }
-                case ADD:
-                {
-                    add(reader, reg, false);
-                    break;
-                }
-                case ADDU:
-                {
-                    add(reader, reg, true);
-                    break;
-                }
-                case SUB:
-                {
-                    sub(reader, reg, false);
-                    break;
-                }
-                case SUBU:
-                {
-                    sub(reader, reg, true);
-                    break;
-                }
-                case ADDI:
-                {
-                    addi(reader, reg, false);
-                    break;
-                }
-                case ADDIU:
-                {
-                    addi(reader, reg, true);
-                    break;
-                }
-                case MULT:
-                {
-                    mult(reader, reg, hi, lo, false);
-                    std::cout << "lo: " << lo << std::endl;
-                    std::cout << "hi: " << hi << std::endl;
-                    break;
-                }
-                case MULTU:
-                {
-                    mult(reader, reg, hi, lo, true);
-                    std::cout << "lo: " << lo << std::endl;
-                    std::cout << "hi: " << hi << std::endl;
-                    break;
-                }
-                case DIV:
-                {
-                    div(reader, reg, hi, lo, false);
-                    std::cout << "lo: " << lo << std::endl;
-                    std::cout << "hi: " << hi << std::endl;
-                    break;
-                }
-                case DIVU:
-                {
-                    div(reader, reg, hi, lo, true);
-                    std::cout << "lo: " << lo << std::endl;
-                    std::cout << "hi: " << hi << std::endl;
-                    break;
-                }
-                case MFLO:
-                {
-                    mflo(reader, reg, lo);
-                    break;
-                }
-                case MFHI:
-                {
-                    mfhi(reader, reg, hi);
-                    break;
-                }
-                case SEQ:
-                case SNE:
-                case SGT:
-                case SLT:
-                case SGE:
-                case SLE:
-                case SLTI:
-                {
-                    set(reader, reg, reader.get_command());
-                    break;
-                }
-            }
-            */
         }
         
         // ---------------------- text mode ----------------------------------
